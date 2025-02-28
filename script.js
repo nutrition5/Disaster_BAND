@@ -1,19 +1,18 @@
 // แทนที่ด้วย API Key และ Spreadsheet ID ของคุณ
-const apiKey = '639462274252-qs02gp3oqqeufpsap1k0j8nrffpjjodf.apps.googleusercontent.com';
+const apiKey = 'AIzaSyAAlmTNXoS6JrgY_sBDnZ7KmQZ-oYOD5rs';
 const spreadsheetId = '1YKBM3TC4FTLjnQZ9zu2ngT4p1kbBpfU8rvz66km1Wqg';
 const sheetName = 'data'; // แทนที่ด้วยชื่อชีตของคุณ
 
 // สร้างแผนที่ Leaflet
-var map = L.map('map').setView([13.7563, 100.5018], 7); // กำหนดจุดศูนย์กลางและระดับการซูม
+var map = L.map('map').setView([13.7563, 100.5018], 7);
 
 // เพิ่ม Tile Layer (แผนที่ฐาน)
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-	attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 }).addTo(map);
 
 // เพิ่ม Marker (ตัวอย่าง)
-L.marker([13.7563, 100.5018]).addTo(map)
-	.bindPopup('Marker ตัวอย่าง');
+L.marker([13.7563, 100.5018]).addTo(map).bindPopup('Marker ตัวอย่าง');
 
 fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${sheetName}?key=${apiKey}`)
     .then(response => response.json())
@@ -24,26 +23,57 @@ fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${s
             features: data.values.slice(1).map(row => ({
                 type: 'Feature',
                 properties: {
-                    // กำหนด properties ตามคอลัมน์ใน Google Sheets
-                    name: row[0],
-                    value: row[1],
-                    tambon: row[8], // ข้อมูลตำบลจาก google sheet
-                    amphoe: row[7], // ข้อมูลอำเภอจาก google sheet
-                    province: row[6], // ข้อมูลจังหวัดจาก google sheet
-										type: row[9], //ประเภทเสบียง
-                    amount: row[10], // จำนวนที่จ่าย
+                    id: row[0],
+                    year: row[1],
+                    zone: row[2],
+                    agency: row[3],
+                    disasterType: row[4],
+                    date: row[5],
+                    province: row[6],
+                    amphoe: row[7],
+                    tambon: row[8],
+                    supplyType: row[9],
+                    amount: row[10],
+                    farmers: row[11],
+                    animals: row[12]
                 },
                 geometry: {
                     type: 'Point',
-                    coordinates: [parseFloat(row[100.5018]), parseFloat(row[13.7563])] // ลองจิจูด, ละติจูด(แก้ไขตามตำแหน่งคอลัมภ์ข้อมูลพิกัด)
+                    coordinates: [parseFloat(row[14]), parseFloat(row[13])] // ลองจิจูด, ละติจูด (แก้ไขตามตำแหน่งคอลัมน์ของคุณ)
                 }
             }))
         };
 
-        // แสดงผล GeoJSON บนแผนที่ Leaflet
+        // ฟังก์ชันกำหนดสีตามปริมาณความช่วยเหลือ
+        function getColor(d) {
+            return d > 10000 ? '#800026' :
+                   d > 5000  ? '#BD0026' :
+                   d > 2000  ? '#E31A1C' :
+                   d > 1000  ? '#FC4E2A' :
+                   d > 500   ? '#FD8D3C' :
+                   d > 200   ? '#FEB24C' :
+                   d > 100   ? '#FED976' :
+                              '#FFEDA0';
+        }
+
+        // ฟังก์ชันกำหนดสไตล์ Choropleth Map
+        function style(feature) {
+            return {
+                fillColor: getColor(feature.properties.amount),
+                weight: 2,
+                opacity: 1,
+                color: 'white',
+                fillOpacity: 0.7
+            };
+        }
+
+        // เพิ่ม Choropleth Map ลงในแผนที่
+        L.geoJSON(geojsonData, { style: style }).addTo(map);
+
+        // เพิ่ม Marker พร้อม Popup
         L.geoJSON(geojsonData, {
             onEachFeature: function (feature, layer) {
-                layer.bindPopup(`ตำบล: ${feature.properties.tambon}<br>อำเภอ: ${feature.properties.amphoe}<br>จังหวัด: ${feature.properties.province}<br>จำนวน: ${feature.properties.amount}`);
+                layer.bindPopup(`ตำบล: ${feature.properties.tambon}<br>อำเภอ: ${feature.properties.amphoe}<br>จังหวัด: ${feature.properties.province}<br>จำนวนที่จ่าย: ${feature.properties.amount}<br>ประเภทเสบียง: ${feature.properties.supplyType}`);
             }
         }).addTo(map);
     });
